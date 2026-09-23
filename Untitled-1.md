@@ -1,0 +1,2 @@
+ID : AKfycbx8BlUyVEqPySlazy0fPl0nnLPoQY2sPk-xIgo8Sqc-yVuFKhXd6QPH5f0OYlsnxYphSQ
+url : https://script.google.com/macros/s/AKfycbx8BlUyVEqPySlazy0fPl0nnLPoQY2sPk-xIgo8Sqc-yVuFKhXd6QPH5f0OYlsnxYphSQ/exec
