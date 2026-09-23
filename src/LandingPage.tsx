@@ -996,7 +996,12 @@ export default function LandingPage() {
   const [sendError, setSendError] = useState('');
 
   /** Nombre de places prises : la feuille fait foi si elle en compte davantage que l'appareil */
-  const foundersCount = Math.max(pioneers.length, sheetCount ?? 0);
+  /**
+   * Nombre de Fondateurs — LA FEUILLE GOOGLE SHEETS EST LA SEULE SOURCE DE VÉRITÉ.
+   * Le localStorage n'influence plus le compteur : il sert uniquement à
+   * afficher la candidature de CE visiteur dans la liste d'exemple.
+   */
+  const foundersCount = sheetCount ?? 0;
   const placesLeft = PLACES_TOTAL - foundersCount;
 
   /** Liste affichée : candidatures connues localement + places prises côté Sheets (anonymisées) */
@@ -1087,6 +1092,8 @@ export default function LandingPage() {
     }
 
     setTicket(result.number ?? foundersCount + 1);
+    // Le compteur suit la feuille : le numéro attribué = nouveau total enregistré
+    if (typeof result.number === 'number') setSheetCount(result.number);
 
     const p = { name, school, country: 'Niger', students };
     const list = [p, ...pioneers];
