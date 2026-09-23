@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { sendCandidature, fetchCandidatureCount, SHEET_ENABLED } from './candidature';
+import { useSheetCount } from './useSheetCount';
 import { formatNigerInput, isCompleteNigerNumber, NIGER_PREFIX } from './whatsapp';
 import {
   ArrowRight, Check, AlertTriangle, Shield, Zap, Award,
@@ -989,7 +990,8 @@ export default function LandingPage() {
   });
 
   /** Candidatures réellement enregistrées dans Google Sheets (compteur partagé entre tous les visiteurs) */
-  const [sheetCount, setSheetCount] = useState<number | null>(null);
+  /** Compteur de candidatures : Google Sheets, avec état de chargement (loader) */
+  const { sheetCount, status: sheetStatus, setCount: setSheetCount } = useSheetCount();
   /** Numéro de Fondateur renvoyé par la feuille pour cette candidature */
   const [ticket, setTicket] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
@@ -1041,14 +1043,7 @@ export default function LandingPage() {
     'Un seul endroit.',
   ], 55, 2200);
 
-  // Nombre de candidatures déjà dans la feuille Google Sheets (places restantes réelles)
-  useEffect(() => {
-    let alive = true;
-    fetchCandidatureCount().then((count) => {
-      if (alive && count !== null) setSheetCount(count);
-    });
-    return () => { alive = false; };
-  }, []);
+  // (le compteur de candidatures est chargé par le hook useSheetCount)
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -1133,7 +1128,7 @@ export default function LandingPage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
               </span>
-              <span>{placesLeft} place{placesLeft > 1 ? 's' : ''} restante{placesLeft > 1 ? 's' : ''}</span>
+              <span>{sheetStatus === 'loading' ? 'Chargement des places…' : sheetStatus === 'offline' ? 'Places bientôt affichées' : `${placesLeft} place${placesLeft > 1 ? 's' : ''} restante${placesLeft > 1 ? 's' : ''}`}</span>
             </div>
             <button onClick={onDeck} className="flex items-center space-x-1.5 text-sm text-white/30 hover:text-white/70 transition-colors">
               <Eye className="w-3.5 h-3.5" />
@@ -1183,7 +1178,7 @@ export default function LandingPage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
                 </span>
-                <span>Programme Fondateurs 2026 · {placesLeft} place{placesLeft > 1 ? 's' : ''} sur {PLACES_TOTAL}</span>
+                <span>Programme Fondateurs 2026 · {sheetStatus === 'ready' ? `${placesLeft} place${placesLeft > 1 ? 's' : ''} sur ${PLACES_TOTAL}` : 'Places limitées'}</span>
                 <ArrowRight className="w-3 h-3" />
               </div>
 
@@ -1595,10 +1590,10 @@ export default function LandingPage() {
                   <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 70% 20%, white 0%, transparent 60%)' }} />
                   <div className="relative">
                     <div className="flex items-end space-x-3 mb-4">
-                      <span className="text-8xl font-black text-slate-900 leading-none">{placesLeft}</span>
+                      <span className="text-8xl font-black text-slate-900 leading-none">{sheetStatus === 'loading' ? <span className="inline-block w-14 align-baseline text-slate-900/30 animate-pulse">···</span> : placesLeft}</span>
                       <div className="pb-3">
-                        <div className="text-slate-900/80 font-black text-xl">place{placesLeft > 1 ? 's' : ''}</div>
-                        <div className="text-slate-900/50 text-sm">disponible{placesLeft > 1 ? 's' : ''} sur {PLACES_TOTAL}</div>
+                        <div className="text-slate-900/80 font-black text-xl">{sheetStatus === 'loading' ? <span className="text-slate-900/30 animate-pulse">chargement</span> : <>place{placesLeft > 1 ? 's' : ''}</>}</div>
+                        <div className="text-slate-900/50 text-sm">{sheetStatus === 'offline' ? 'compteur momentanément indisponible' : <>disponible{placesLeft > 1 ? 's' : ''} sur {PLACES_TOTAL}</>}</div>
                       </div>
                     </div>
                     <div className="w-full bg-slate-900/15 rounded-full h-2.5 mb-4">
@@ -1828,7 +1823,7 @@ export default function LandingPage() {
                   <div className="flex items-center space-x-2.5 text-sm text-amber-400/80">
                     <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                     <div>
-                      <span className="font-black text-amber-400">{placesLeft} place{placesLeft > 1 ? 's' : ''} disponible{placesLeft > 1 ? 's' : ''}</span>
+                      <span className="font-black text-amber-400">{sheetStatus === 'loading' ? <span className="animate-pulse">Chargement des places…</span> : sheetStatus === 'offline' ? 'Places limitées — candidature ouverte' : <>{placesLeft} place{placesLeft > 1 ? 's' : ''} disponible{placesLeft > 1 ? 's' : ''}</>}</span>
                       <span className="text-white/40"> · 12 mois gratuits · Formation offerte · Migration offerte à tous</span>
                     </div>
                   </div>

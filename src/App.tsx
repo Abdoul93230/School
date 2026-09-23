@@ -11,7 +11,8 @@ import {
   Calendar, PenLine, FolderOpen, Image, MapPin, BookMarked
 } from 'lucide-react';
 import { SLIDES_DATA } from './slidesData';
-import { sendCandidature, fetchCandidatureCount, SHEET_ENABLED } from './candidature';
+import { sendCandidature, SHEET_ENABLED } from './candidature';
+import { useSheetCount } from './useSheetCount';
 import { formatNigerInput, isCompleteNigerNumber, NIGER_PREFIX } from './whatsapp';
 
 const PLACES_TOTAL = 20;
@@ -831,8 +832,8 @@ export default function App() {
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
-  /** Candidatures réellement présentes dans Google Sheets (compteur partagé) */
-  const [sheetCount, setSheetCount] = useState<number | null>(null);
+  /** Compteur de candidatures : Google Sheets, avec état de chargement (loader) */
+  const { sheetCount, status: sheetStatus, setCount: setSheetCount } = useSheetCount();
   /** Numéro de Fondateur renvoyé par la feuille */
   const [ticket, setTicket] = useState<number | null>(null);
 
@@ -943,14 +944,7 @@ export default function App() {
     setSubmitted(true);
   };
 
-  // Nombre de candidatures déjà dans la feuille Google Sheets (places restantes réelles)
-  useEffect(() => {
-    let alive = true;
-    fetchCandidatureCount().then((count) => {
-      if (alive && count !== null) setSheetCount(count);
-    });
-    return () => { alive = false; };
-  }, []);
+  // (le compteur de candidatures est chargé par le hook useSheetCount)
 
   const goNext = () => setSlide(p => Math.min(p + 1, total - 1));
   const goPrev = () => setSlide(p => Math.max(p - 1, 0));
@@ -1074,13 +1068,13 @@ export default function App() {
                   <div className="p-5 bg-slate-900 rounded-2xl text-white">
                     <div className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-3">Places Fondateurs disponibles</div>
                     <div className="flex items-end space-x-2 mb-2">
-                      <span className="text-5xl font-bold text-amber-400">{placesLeft}</span>
+                      <span className="text-5xl font-bold text-amber-400">{sheetStatus === 'loading' ? <span className="text-amber-400/40 animate-pulse">···</span> : placesLeft}</span>
                       <span className="text-slate-400 text-sm pb-1.5">/ {PLACES_TOTAL} places</span>
                     </div>
                     <div className="w-full bg-white/10 rounded-full h-1.5 mb-2">
                       <div className="bg-amber-400 h-1.5 rounded-full transition-all" style={{ width: `${((PLACES_TOTAL - placesLeft) / PLACES_TOTAL) * 100}%` }} />
                     </div>
-                    <p className="text-xs text-slate-400">{PLACES_TOTAL - placesLeft} établissements déjà inscrits. 12 mois gratuits + accompagnement premium inclus.</p>
+                    <p className="text-xs text-slate-400">{sheetStatus === 'loading' ? <span className="animate-pulse">Vérification des places en cours…</span> : sheetStatus === 'offline' ? 'Places limitées — 12 mois gratuits + accompagnement premium inclus.' : `${PLACES_TOTAL - placesLeft} établissement${PLACES_TOTAL - placesLeft > 1 ? 's' : ''} déjà inscrit${PLACES_TOTAL - placesLeft > 1 ? 's' : ''}. 12 mois gratuits + accompagnement premium inclus.`}</p>
                   </div>
                   <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-start space-x-3">
                     <div className="w-9 h-9 bg-amber-400 rounded-lg flex items-center justify-center text-slate-900 text-xs font-bold shrink-0">SL</div>
@@ -1562,7 +1556,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="p-5 border-2 border-amber-300 bg-amber-50 rounded-2xl">
                     <div className="flex items-end space-x-2 mb-2">
-                      <span className="text-5xl font-bold text-amber-500">{placesLeft}</span>
+                      <span className="text-5xl font-bold text-amber-500">{sheetStatus === 'loading' ? <span className="text-amber-500/40 animate-pulse">···</span> : placesLeft}</span>
                       <span className="text-slate-500 text-sm pb-1.5">places disponibles sur {PLACES_TOTAL}</span>
                     </div>
                     <div className="w-full bg-amber-200 rounded-full h-2 mb-3">
@@ -1673,7 +1667,7 @@ export default function App() {
                     <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between gap-4">
                       <div className="flex items-center space-x-2 text-sm text-amber-800">
                         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                        <span><strong>{placesLeft} place{placesLeft > 1 ? 's' : ''}</strong> disponible{placesLeft > 1 ? 's' : ''} sur {PLACES_TOTAL} — 12 mois gratuits · accompagnement premium inclus</span>
+                        <span><strong>{sheetStatus === 'ready' ? <>{placesLeft} place{placesLeft > 1 ? 's' : ''}</> : 'Places limitées'}</strong>{sheetStatus === 'ready' && <> disponible{placesLeft > 1 ? 's' : ''} sur {PLACES_TOTAL}</>} — 12 mois gratuits · accompagnement premium inclus</span>
                       </div>
                       <div className="w-20 bg-amber-200 rounded-full h-1.5 shrink-0">
                         <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${((PLACES_TOTAL - placesLeft) / PLACES_TOTAL) * 100}%` }} />
